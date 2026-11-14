@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>油猴脚本 · 搜索结果页（演示）</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: #fff; color: #202124;
+    font: 14px/1.6 -apple-system, "Segoe UI", system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  .top { border-bottom: 1px solid #ebedf0; position: sticky; top: 0; background: #fff; z-index: 5; }
+  .top-in { max-width: 900px; margin: 0 auto; padding: 14px 20px; display: flex; align-items: center; gap: 14px; }
+  .logo { font-size: 19px; font-weight: 700; letter-spacing: -.02em; color: #1a73e8; white-space: nowrap; }
+  .sbox { flex: 1; max-width: 620px; display: flex; align-items: center; gap: 8px;
+    border: 1px solid #dfe1e5; border-radius: 999px; padding: 7px 8px 7px 16px; }
+  .sbox:focus-within { border-color: #1a73e8; box-shadow: 0 0 0 3px rgba(26,115,232,.12); }
+  .sbox input { flex: 1; border: 0; outline: 0; font-size: 15px; color: #202124; background: none; font-family: inherit; }
+  .sbox button { border: 0; background: #1a73e8; color: #fff; border-radius: 999px; padding: 6px 16px; font-size: 13px; cursor: pointer; font-family: inherit; }
+  /* 内容故意靠左，右侧留给换引擎竖栏 —— 和真实搜索结果页一样 */
+  main { max-width: 700px; margin: 0; padding: 18px 20px 64px 3.5vw; }
+  .meta { color: #70757a; font-size: 12.5px; margin-bottom: 16px; }
+  .res { margin-bottom: 22px; }
+  .res h3 { margin: 0 0 3px; font-size: 17px; font-weight: 500; }
+  .res h3 a { color: #1a0dab; text-decoration: none; }
+  .res h3 a:hover { text-decoration: underline; }
+  .res .u { color: #006621; font-size: 12.5px; margin-bottom: 4px; word-break: break-all; }
+  .res p { margin: 0; color: #4d5156; font-size: 13.5px; }
+  .note {
+    margin-top: 30px; padding: 13px 15px; border-radius: 12px;
+    background: #f1f5ff; border: 1px solid #d6e2ff; color: #33508a;
+    font-size: 12.5px; line-height: 1.8;
+  }
+  .note b { color: #1a3d7c; }
+  .kbd { display: inline-block; border: 1px solid #c3d0e8; border-bottom-width: 2px; border-radius: 5px;
+    padding: 0 5px; font: 11px/1.6 ui-monospace, monospace; background: #fff; color: #33508a; }
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="top-in">
+    <span class="logo">示例搜索</span>
+    <div class="sbox">
+      <input type="search" name="q" value="油猴脚本 聚合搜索" autocomplete="off">
+      <button>搜索</button>
+    </div>
+  </div>
+</div>
+
+<main>
+  <div class="meta">找到约 1,240,000 条结果（0.42 秒）</div>
+
+  <div class="res">
+    <h3><a href="#">油猴脚本入门：从写第一行 UserScript 开始</a></h3>
+    <div class="u">https://example.com › userscript › intro</div>
+    <p>用户脚本是一段注入到网页里运行的 JavaScript，配合 Tampermonkey、Violentmonkey 或脚本猫使用，可以改写页面样式、补功能、做自动化。</p>
+  </div>
+  <div class="res">
+    <h3><a href="#">聚合搜索是怎么实现的？三条常见技术路线</a></h3>
+    <div class="u">https://example.com › metasearch › approaches</div>
+    <p>多标签打开、iframe 并排、以及抓取各家结果页再重新排版。前两条不依赖解析，第三条效果最好但最容易被改版打挂。</p>
+  </div>
+  <div class="res">
+    <h3><a href="#">为什么大多数搜索引擎不允许被 iframe 嵌入</a></h3>
+    <div class="u">https://example.com › security › x-frame-options</div>
+    <p>X-Frame-Options 与 CSP frame-ancestors 用来防点击劫持。想嵌入只能自己搭 SearXNG 这类可自控的实例。</p>
+  </div>
+  <div class="res">
+    <h3><a href="#">拖拽吸附为什么要做「阻力」</a></h3>
+    <div class="u">https://example.com › interaction › magnetic-snap</div>
+    <p>只靠距离阈值吸附会让人误触：手一抖就飞出去。给脱离加一个额外位移门槛，吸住和拖走才都明确。</p>
+  </div>
+  <div class="res">
+    <h3><a href="#">GM_setValue 与 localStorage 的取舍</a></h3>
+    <div class="u">https://example.com › userscript › storage</div>
+    <p>GM 存储跨站点共享、可跟随账号同步；localStorage 按域名隔离，适合只在一个站点使用的脚本。</p>
+  </div>
+
+  <div class="note">
+    <b>这是演示页。</b>页面右侧那条竖排小窗是脚本注入的换引擎栏，它读的就是上方搜索框里这个词。<br>
+    · 改一下搜索框内容，栏里的词会跟着变；点引擎即切换。<br>
+    · 拖住顶部那行搜索词可以移动小窗，靠边会吸附；<b>吸附后要往反方向多拖一段才拽得动</b>。<br>
+    · 鼠标移到竖栏<b>左侧边沿</b>会看到一道竖线，左右拖即可调宽窄（也可以用 ⚙ 里的滑杆）。<br>
+    · <span class="kbd">Alt</span>+<span class="kbd">S</span> 重新读取搜索词；<span class="kbd">Esc</span> 收起；⚙ 里可改位置、宽度与引擎。
+  </div>
+</main>
+
+<script>
+  /* 把搜索词写进 URL，模拟真实结果页（file:// 下可能被拒，忽略即可） */
+  try {
+    var q = document.querySelector('.sbox input').value;
+    history.replaceState(null, '', '?q=' + encodeURIComponent(q));
+  } catch (e) {}
+
+  /* 模拟油猴 API，让预览页无需安装管理器 */
+  window.GM_getValue = function (k, d) {
+    var v = localStorage.getItem(k);
+    return v === null ? d : v;
+  };
+  window.GM_setValue = function (k, v) { localStorage.setItem(k, v); };
+  window.GM_registerMenuCommand = function () {};
+</script>
+<script src="metasearch.user.js"></script>
+</body>
+</html>
