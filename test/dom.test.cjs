@@ -156,6 +156,72 @@ function boot(url, html = '<body></body>', before) {
   a.$('[data-a="cancel"]').click();
   t('取消不写配置', a.$$('.eng').length === 2);
 
+  /* ---------- 布局预设 ---------- */
+  a.$('[data-a="set"]').click();
+  t('默认 3 个预设', a.$$('#presets .pill').length === 3, a.$$('#presets .pill').length);
+  a.$('#presets .pill:nth-child(2) b').click();
+  t('应用预设改宽度', cfgOf().w === 280, cfgOf().w);
+  t('应用预设后宽度标签同步', a.$('#wv').textContent === '280px', a.$('#wv').textContent);
+  t('当前预设高亮', a.$$('#presets .pill.on').length === 1, a.$$('#presets .pill.on').length);
+  t('预设已落盘', cfgOf().pos.m === 'right' && cfgOf().w === 280);
+
+  setW(200);
+  a.$('[data-a="addpreset"]').click();
+  t('存当前 → 4 个预设', cfgOf().presets.length === 4, cfgOf().presets.length);
+  t('新预设自动命名', cfgOf().presets[3].name === '贴右·200', cfgOf().presets[3].name);
+  a.$('[data-a="addpreset"]').click();
+  t('同布局不重复存', cfgOf().presets.length === 4);
+  a.$$('#presets .pill i')[3].click();
+  t('删除预设', cfgOf().presets.length === 3, cfgOf().presets.length);
+
+  /* ---------- 整份配置导出 ---------- */
+  a.$('[data-a="expCfg"]').click();
+  let dumped = {};
+  try { dumped = JSON.parse(a.$('#io').value); } catch (e) {}
+  t('导出整份含全部字段',
+    ['engines', 'presets', 'w', 'pos', 'hotkey', 'openNew'].every(k => k in dumped),
+    Object.keys(dumped).join(','));
+  t('导出整份引擎数正确', (dumped.engines || []).length === 2, (dumped.engines || []).length);
+
+  /* ---------- 模板单独导出 ---------- */
+  a.$('[data-a="expPre"]').click();
+  let tpl = {};
+  try { tpl = JSON.parse(a.$('#io').value); } catch (e) {}
+  t('导出模板只有 presets', !tpl.engines && Array.isArray(tpl.presets), Object.keys(tpl).join(','));
+  t('模板数量与当前一致', tpl.presets.length === 3, tpl.presets.length);
+
+  /* ---------- 模板单独写入 ---------- */
+  a.$('#io').value = JSON.stringify({ presets: [
+    { name: 'M1', m: 'left', x: 0.5, y: 0.5, w: 210 },
+    { name: 'M2', m: 'bottom', x: 0.3, y: 0.5, w: 150 },
+  ] });
+  a.$('[data-a="writePre"]').click();
+  t('写入模板只换预设', cfgOf().presets.length === 2 && cfgOf().engines.length === 2,
+    cfgOf().presets.length + '/' + cfgOf().engines.length);
+  t('写入模板保留名称', cfgOf().presets[0].name === 'M1', cfgOf().presets[0].name);
+  t('写入模板后 UI 刷新', a.$$('#presets .pill').length === 2, a.$$('#presets .pill').length);
+
+  /* ---------- 整份配置写入 ---------- */
+  a.$('#io').value = JSON.stringify({
+    hotkey: 'ctrl+alt+k', openNew: true, w: 300, pos: { m: 'left', x: 0.5, y: 0.5 },
+    presets: [{ name: 'A', m: 'left', x: 0.5, y: 0.5, w: 300 }],
+    engines: [{ name: 'X', url: 'https://x.com/?q=%s' }],
+  });
+  a.$('[data-a="writeCfg"]').click();
+  t('写入后宽度生效', cfgOf().w === 300 && a.$('#bar').style.width === '300px', a.$('#bar').style.width);
+  t('写入后引擎生效', a.$$('.eng').length === 1, a.$$('.eng').length);
+  t('写入后预设生效', cfgOf().presets.length === 1);
+  t('写入后快捷键同步', a.$('#hk').value === 'Ctrl+Alt+K', a.$('#hk').value);
+  t('写入后已落盘', JSON.parse(a.win.localStorage.getItem('metasearch:cfg')).w === 300);
+
+  a.$('#io').value = '{oops}';
+  a.$('[data-a="writeCfg"]').click();
+  t('坏 JSON 被拦', a.$('.toast').textContent.includes('JSON') && cfgOf().w === 300, a.$('.toast').textContent);
+  a.$('#io').value = JSON.stringify({ presets: [] });
+  a.$('[data-a="writePre"]').click();
+  t('空模板被拦', cfgOf().presets.length === 1);
+  a.$('[data-a="cancel"]').click();
+
   /* ---------- 当前引擎高亮 ---------- */
   const b = boot('https://www.baidu.com/s?wd=jsdom%20test');
   t('当前引擎只有一个高亮', b.$$('.eng.cur').length === 1, b.$$('.eng.cur').length);

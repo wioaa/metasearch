@@ -2,8 +2,8 @@
 // @name         聚合搜索 MetaSearch
 // @name:en      MetaSearch - Quick Engine Switcher
 // @namespace    https://github.com/wioaa/metasearch
-// @version      2.1.1
-// @description  自动读取当前页面的搜索词（搜索框内容 / URL 参数），一键换成别的搜索引擎；竖栏可拖拽、靠边吸附、位置与宽度都可调
+// @version      2.2.0
+// @description  自动读取当前页面的搜索词（搜索框内容 / URL 参数），一键换成别的搜索引擎；竖栏可拖拽、靠边吸附、多套布局预设，配置与预设模板均可导出导入
 // @description:en Grab the query already typed on the page and re-run it on another engine. A draggable side rail that snaps to edges.
 // @author       wioaa
 // @license      MIT
@@ -23,12 +23,20 @@
 
   /* ================= 配置 ================= */
   const KEY = 'metasearch:cfg';
+  const MODES = ['left', 'right', 'bottom', 'free'];
+  const PNAME = { left: '贴左', right: '贴右', bottom: '贴底', free: '自由' };
   const DEFAULTS = {
     hotkey: 'alt+s',
     openNew: false,   // false = 本窗口刷新切换，true = 新标签页打开
     w: 172,           // 竖栏宽度 px
     // 位置：m = left | right | bottom | free；x / y 是 0~1 的比例，换分辨率也不跑偏
     pos: { m: 'right', x: 0.5, y: 0.5 },
+    // 布局预设：一键切换「位置 + 宽度」，可自己增删
+    presets: [
+      { name: '贴右·窄', m: 'right', x: 0.5, y: 0.5, w: 160 },
+      { name: '贴右·宽', m: 'right', x: 0.5, y: 0.5, w: 280 },
+      { name: '贴左·中', m: 'left', x: 0.5, y: 0.5, w: 200 },
+    ],
     engines: [        // %s 就是搜索词；数组顺序 = 竖栏顺序
       { name: '百度', url: 'https://www.baidu.com/s?wd=%s' },
       { name: 'Bing', url: 'https://www.bing.com/search?q=%s' },
@@ -45,27 +53,44 @@
   const hasGM = typeof GM_getValue === 'function' && typeof GM_setValue === 'function';
   let fresh = false;
 
+  const clamp01 = (v, d) => { const n = Number(v); return isFinite(n) ? Math.min(1, Math.max(0, n)) : d; };
+  const clampW = v => Math.min(420, Math.max(120, Math.round(Number(v) || 172)));
+
+  // 把任意来源（存储 / 导入的 JSON）整理成合法配置
+  function normalize(got) {
+    const hadPresets = Array.isArray(got && got.presets); // 明确写了空数组 = 用户确实不要预设
+    const cfg = Object.assign(JSON.parse(JSON.stringify(DEFAULTS)), got || {});
+    cfg.engines = (Array.isArray(cfg.engines) ? cfg.engines : [])
+      .map(e => ({ name: String(e.name || ''), url: String(e.url || '') }))
+      .filter(e => e.name && e.url);
+    if (!cfg.engines.length) cfg.engines = JSON.parse(JSON.stringify(DEFAULTS.engines));
+    if (!cfg.hotkey) cfg.hotkey = DEFAULTS.hotkey;
+    cfg.openNew = !!cfg.openNew;
+    cfg.w = clampW(cfg.w);
+    cfg.pos = {
+      m: MODES.includes(cfg.pos && cfg.pos.m) ? cfg.pos.m : 'right',
+      x: clamp01(cfg.pos && cfg.pos.x, 0.5),
+      y: clamp01(cfg.pos && cfg.pos.y, 0.5),
+    };
+    cfg.presets = (Array.isArray(cfg.presets) ? cfg.presets : []).map(p => {
+      const m = MODES.includes(p && p.m) ? p.m : 'right';
+      const w = clampW(p && p.w);
+      return {
+        name: String((p && p.name) || '').slice(0, 16) || `${PNAME[m]}·${w}`,
+        m, x: clamp01(p && p.x, 0.5), y: clamp01(p && p.y, 0.5), w,
+      };
+    }).slice(0, 8);
+    if (!cfg.presets.length && !hadPresets) cfg.presets = JSON.parse(JSON.stringify(DEFAULTS.presets));
+    return cfg;
+  }
+
   function load() {
     let raw = '';
     try { raw = hasGM ? GM_getValue(KEY, '') : localStorage.getItem(KEY) || ''; } catch (e) {}
     fresh = !raw;
     let got = {};
     try { got = raw ? JSON.parse(raw) : {}; } catch (e) {}
-    const cfg = Object.assign(JSON.parse(JSON.stringify(DEFAULTS)), got);
-    cfg.engines = (Array.isArray(cfg.engines) ? cfg.engines : [])
-      .map(e => ({ name: String(e.name || ''), url: String(e.url || '') }))
-      .filter(e => e.name && e.url);
-    if (!cfg.engines.length) cfg.engines = DEFAULTS.engines.slice();
-    if (!cfg.hotkey) cfg.hotkey = DEFAULTS.hotkey;
-    cfg.openNew = !!cfg.openNew;
-    cfg.w = Math.min(420, Math.max(120, Number(cfg.w) || 172));
-    const m = ['left', 'right', 'bottom', 'free'].includes(cfg.pos && cfg.pos.m) ? cfg.pos.m : 'right';
-    cfg.pos = {
-      m,
-      x: Math.min(1, Math.max(0, Number(cfg.pos && cfg.pos.x) || 0.5)),
-      y: Math.min(1, Math.max(0, Number(cfg.pos && cfg.pos.y) || 0.5)),
-    };
-    return cfg;
+    return normalize(got);
   }
 
   function save(c) {
@@ -101,11 +126,21 @@
 .mode:hover{background:#2a313c;border-color:#4a5462;color:#fff}
 .ic{width:24px;height:24px;flex:none;border:0;border-radius:7px;background:transparent;color:#8b929c;cursor:pointer;font-size:13px;line-height:1;padding:0;font-family:inherit}
 .ic:hover{background:#2a313c;color:#fff}
-.panel{position:fixed;left:0;top:0;z-index:2147483647;display:none;width:min(400px,calc(100vw - 24px));background:#15171c;border:1px solid #2a2e36;border-radius:13px;padding:13px;box-shadow:0 18px 50px rgba(0,0,0,.55);font:13px/1.6 -apple-system,"Segoe UI",system-ui,"PingFang SC","Microsoft YaHei",sans-serif;color:#e6e8eb}
+.panel{position:fixed;left:0;top:0;z-index:2147483647;display:none;width:min(408px,calc(100vw - 24px));max-height:min(82vh,780px);overflow-y:auto;background:#15171c;border:1px solid #2a2e36;border-radius:13px;padding:13px;box-shadow:0 18px 50px rgba(0,0,0,.55);font:13px/1.6 -apple-system,"Segoe UI",system-ui,"PingFang SC","Microsoft YaHei",sans-serif;color:#e6e8eb}
 .panel.on{display:block}
-.lbl{font-size:12px;color:#8b929c;margin:0 0 7px}
-.panel textarea{width:100%;height:168px;resize:vertical;background:#0f1115;border:1px solid #2a2e36;border-radius:8px;color:#e6e8eb;padding:8px 10px;font:12px/1.7 ui-monospace,SFMono-Regular,monospace;outline:0}
+.panel::-webkit-scrollbar{width:8px}
+.panel::-webkit-scrollbar-thumb{background:#39404c;border-radius:4px}
+.lbl{font-size:12px;color:#8b929c;margin:0 0 7px;display:flex;align-items:center;gap:8px;justify-content:space-between}
+.lbl .btn{padding:2px 8px;font-size:11.5px}
+.pill{display:inline-flex;align-items:center;gap:1px;border:1px solid #333a45;border-radius:999px;background:#1b1f26;padding:2px 3px 2px 9px;font-size:12px;color:#dfe3e9;line-height:1.7}
+.pill.on{border-color:#2f6bff;background:#1a2b52;color:#fff}
+.pill b{font-weight:400;cursor:pointer}
+.pill i{font-style:normal;color:#7c828c;cursor:pointer;font-size:11px;padding:0 4px;border-radius:6px}
+.pill i:hover{color:#ff8585;background:#2a2f39}
+.panel textarea{width:100%;resize:vertical;background:#0f1115;border:1px solid #2a2e36;border-radius:8px;color:#e6e8eb;padding:8px 10px;font:12px/1.7 ui-monospace,SFMono-Regular,monospace;outline:0}
 .panel textarea:focus{border-color:#4c8dff}
+#ta{height:142px}
+#io{height:76px;margin-top:6px}
 .row{display:flex;align-items:center;gap:6px;margin-top:10px;flex-wrap:wrap}
 #hk{width:126px;background:#0f1115;border:1px solid #2a2e36;border-radius:8px;color:#cfd6df;padding:5px 9px;font:12px ui-monospace,monospace;outline:0;cursor:pointer}
 #wr{flex:1;min-width:0;margin:0;height:16px;accent-color:#2f6bff;cursor:pointer}
@@ -136,25 +171,44 @@
   </div>
 </div>
 <div class="panel" id="panel">
-  <div class="lbl">位置</div>
-  <div class="row" id="posRow">
+  <div class="lbl"><span>位置</span></div>
+  <div class="row" style="margin-top:0" id="posRow">
     <button class="btn sm" data-a="pos" data-m="left">贴左</button>
     <button class="btn sm" data-a="pos" data-m="right">贴右</button>
     <button class="btn sm" data-a="pos" data-m="bottom">贴底</button>
     <button class="btn sm" data-a="pos" data-m="free">自由</button>
   </div>
-  <div class="lbl" style="margin-top:12px">宽度 <span id="wv">172px</span>（也可以直接拖竖栏内侧边沿）</div>
+
+  <div class="lbl" style="margin-top:12px"><span>宽度 <span id="wv">172px</span></span><span class="tip" style="margin:0">拖内侧边沿也行</span></div>
   <div class="row" style="margin-top:0"><input type="range" id="wr" min="120" max="420" step="10"></div>
-  <div class="lbl" style="margin-top:12px">每行一个引擎：<b>名称 | URL</b>（%s = 搜索词；不写名称就用域名）</div>
+
+  <div class="lbl" style="margin-top:12px"><span>布局预设</span><button class="btn sm" data-a="addpreset" title="把当前位置 + 宽度存成一个预设">＋ 存当前</button></div>
+  <div class="row" style="margin-top:0" id="presets"></div>
+
+  <div class="lbl" style="margin-top:12px"><span>搜索引擎</span><span class="tip" style="margin:0">名称 | URL，%s = 搜索词</span></div>
   <textarea id="ta" spellcheck="false" placeholder="百度 | https://www.baidu.com/s?wd=%s"></textarea>
-  <div class="row">
-    <span class="lbl" style="margin:0">快捷键</span>
-    <input id="hk" readonly>
-    <span class="sp"></span>
+
+  <div class="lbl" style="margin-top:12px"><span>快捷键</span><span class="tip" style="margin:0">点输入框后按组合键</span></div>
+  <div class="row" style="margin-top:0"><input id="hk" readonly></div>
+
+  <div class="lbl" style="margin-top:12px"><span>配置备份</span><span class="tip" style="margin:0">整份配置 / 仅模板</span></div>
+  <div class="row" style="margin-top:0">
+    <button class="btn sm" data-a="expCfg">导出整份</button>
+    <button class="btn sm" data-a="expPre">导出模板</button>
+    <button class="btn sm" data-a="impFile">导入文件</button>
+    <input type="file" id="impFile" accept=".json,application/json" style="display:none">
+  </div>
+  <textarea id="io" spellcheck="false" placeholder="「导出」会把 JSON 放到这里；也可以粘贴别人的配置/模板，再点下面「写入」"></textarea>
+  <div class="row" style="margin-top:6px">
+    <button class="btn sm" data-a="writeCfg">写入配置</button>
+    <button class="btn sm" data-a="writePre">写入预设</button>
+  </div>
+
+  <div class="row" style="margin-top:14px;justify-content:flex-end">
     <button class="btn" data-a="cancel">取消</button>
     <button class="btn pri" data-a="save">保存</button>
   </div>
-  <div class="tip">拖住顶部搜索词可移动整个小窗；靠边会吸附，吸附后要往反方向多拖一段才拽得动。点引擎=切换，中键/Ctrl+点击=新标签。</div>
+  <div class="tip">拖住顶部搜索词可移动小窗，靠边吸附；吸附后要往反方向多拖一段才拽得动。点引擎=切换，中键 / Ctrl+点击=新标签。</div>
 </div>
 <div class="toast"></div>
 `;
@@ -493,12 +547,128 @@
     $$('#posRow .btn').forEach(b => b.classList.toggle('on', b.dataset.m === cfg.pos.m));
   }
 
+  /* ---- 布局预设 ---- */
+  const sameGeom = p => p.m === cfg.pos.m && p.w === cfg.w
+    && Math.abs(p.x - cfg.pos.x) < 0.005 && Math.abs(p.y - cfg.pos.y) < 0.005;
+
+  function renderPresets() {
+    const box = $('#presets');
+    if (!cfg.presets.length) {
+      box.innerHTML = '<span class="tip" style="margin:0">还没有预设，点右上「＋ 存当前」存一个</span>';
+      return;
+    }
+    box.innerHTML = cfg.presets.map((p, i) =>
+      `<span class="pill${sameGeom(p) ? ' on' : ''}" title="${PNAME[p.m]} · ${p.w}px">` +
+      `<b data-a="preset" data-i="${i}">${esc(p.name)}</b>` +
+      `<i data-a="delpreset" data-i="${i}" title="删除这个预设">✕</i></span>`).join('');
+  }
+
+  function applyPreset(i) {
+    const p = cfg.presets[i];
+    if (!p) return;
+    cfg.pos = { m: p.m, x: p.x, y: p.y };
+    cfg.w = p.w;
+    save(cfg);
+    $('#wv').textContent = cfg.w + 'px';
+    $('#wr').value = cfg.w;
+    settle();
+    markPos();
+    renderPresets();
+    placePanel();
+  }
+
+  function addPreset() {
+    if (cfg.presets.length >= 8) return toast('预设最多 8 个');
+    if (cfg.presets.some(sameGeom)) return toast('这个布局已经存过了');
+    cfg.presets.push({ name: `${PNAME[cfg.pos.m]}·${cfg.w}`, m: cfg.pos.m, x: cfg.pos.x, y: cfg.pos.y, w: cfg.w });
+    save(cfg);
+    renderPresets();
+    toast('已存为预设');
+  }
+
+  function delPreset(i) {
+    if (!cfg.presets[i]) return;
+    cfg.presets.splice(i, 1);
+    save(cfg);
+    renderPresets();
+    toast('已删除预设');
+  }
+
+  /* ---- 导出 / 写入 ---- */
+  function downloadJson(name, text) {
+    try {
+      const blob = new Blob([text], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+    } catch (e) { /* 环境不支持下载时，内容已经放进文本框了 */ }
+  }
+
+  function exportCfg() {
+    const json = JSON.stringify({
+      v: 2, hotkey: cfg.hotkey, openNew: cfg.openNew, w: cfg.w,
+      pos: cfg.pos, presets: cfg.presets, engines: cfg.engines,
+    }, null, 2);
+    $('#io').value = json;
+    downloadJson('metasearch-config.json', json);
+    toast(`已导出整份配置：${cfg.engines.length} 引擎 / ${cfg.presets.length} 预设`);
+  }
+
+  function exportPresets() {
+    const json = JSON.stringify({ presets: cfg.presets }, null, 2);
+    $('#io').value = json;
+    downloadJson('metasearch-presets.json', json);
+    toast(`已导出 ${cfg.presets.length} 个预设模板`);
+  }
+
+  function writeConfig(o) {
+    if (!o || !Array.isArray(o.engines)) return toast('这份 JSON 里没有 engines 数组');
+    cfg = normalize(o);
+    save(cfg);
+    syncHk();
+    $('#wv').textContent = cfg.w + 'px';
+    $('#wr').value = cfg.w;
+    $('#ta').value = serialize(cfg.engines);
+    $('#io').value = '';
+    markPos();
+    renderPresets();
+    settle();
+    refresh();
+    toast(`已写入：${cfg.engines.length} 个引擎、${cfg.presets.length} 个预设`);
+  }
+
+  function writePresets(o) {
+    const arr = Array.isArray(o) ? o : (o && Array.isArray(o.presets) ? o.presets : null);
+    if (!arr) return toast('没找到 presets 数组');
+    if (!arr.length) return toast('这份模板里没有预设');
+    const next = normalize(Object.assign({}, cfg, { presets: arr })).presets;
+    cfg.presets = next;
+    save(cfg);
+    renderPresets();
+    toast(`已写入 ${next.length} 个预设模板`);
+  }
+
+  function writeFromText(onlyPresets) {
+    const t = $('#io').value.trim();
+    if (!t) return toast('先把 JSON 粘进上面的框');
+    let o;
+    try { o = JSON.parse(t); } catch (e) { return toast('JSON 解析失败'); }
+    return onlyPresets ? writePresets(o) : writeConfig(o);
+  }
+
   function openPanel() {
     $('#ta').value = serialize(cfg.engines);
+    $('#io').value = '';
     $('#wv').textContent = cfg.w + 'px';
     $('#wr').value = cfg.w;
     syncHk();
     markPos();
+    renderPresets();
     $('#panel').classList.add('on');
     placePanel();
   }
@@ -510,11 +680,12 @@
     const bad = list.find(e => !/%s/.test(e.url));
     if (bad) return toast(`「${bad.name}」的 URL 缺少 %s 占位符`);
     const hk = $('#hk').dataset.v || '';
-    if (hk) {
-      if (!parseHotkey(hk).key) return toast('快捷键要带一个普通键，比如 Alt+S');
-      cfg.hotkey = hk;
-    }
-    cfg.engines = list;
+    if (hk && !parseHotkey(hk).key) return toast('快捷键要带一个普通键，比如 Alt+S');
+    // 位置 / 宽度 / 预设是即时生效的，这里只覆盖引擎和快捷键，别把刚调好的布局冲掉
+    const next = JSON.parse(JSON.stringify(cfg));
+    next.engines = list;
+    if (hk) next.hotkey = hk;
+    cfg = next;
     save(cfg);
     closePanel();
     refresh();
@@ -553,6 +724,14 @@
     if (a === 'set') return $('#panel').classList.contains('on') ? closePanel() : openPanel();
     if (a === 'cancel') return closePanel();
     if (a === 'save') return saveSettings();
+    if (a === 'addpreset') return addPreset();
+    if (a === 'preset') return applyPreset(+el.dataset.i);
+    if (a === 'delpreset') return delPreset(+el.dataset.i);
+    if (a === 'expCfg') return exportCfg();
+    if (a === 'expPre') return exportPresets();
+    if (a === 'impFile') return $('#impFile').click();
+    if (a === 'writeCfg') return writeFromText(false);
+    if (a === 'writePre') return writeFromText(true);
   });
 
   $('#hk').addEventListener('keydown', e => {
@@ -584,6 +763,23 @@
   gripEl.addEventListener('pointercancel', onGripUp);
 
   $('#wr').addEventListener('input', e => setWidth(e.target.value));
+
+  // 导入文件：有 engines 就整份写入，否则只当预设模板
+  $('#impFile').addEventListener('change', e => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    const fr = new FileReader();
+    fr.onload = () => {
+      const text = String(fr.result || '');
+      $('#io').value = text;
+      let o;
+      try { o = JSON.parse(text); } catch (err) { return toast('这个文件不是合法 JSON'); }
+      if (o && Array.isArray(o.engines)) writeConfig(o);
+      else writePresets(o);
+    };
+    fr.readAsText(f);
+    e.target.value = '';
+  });
 
   // 边打字边跟着变
   let typeTimer = 0;
