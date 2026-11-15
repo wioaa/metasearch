@@ -2,8 +2,8 @@
 // @name         聚合搜索 MetaSearch
 // @name:en      MetaSearch - Quick Engine Switcher
 // @namespace    https://github.com/wioaa/metasearch
-// @version      2.3.0
-// @description  自动读取当前页面的搜索词（搜索框内容 / URL 参数），一键换成别的搜索引擎；竖栏可拖拽、靠边吸附，引擎按用途分组（通用/技术/社区/影音/学术/购物/图片）一点即换，可自建气泡分组并整套导入导出
+// @version      2.3.1
+// @description  自动读取当前页面的搜索词（搜索框内容 / URL 参数），一键换成别的搜索引擎；竖栏可拖拽、靠边吸附，引擎按用途分组（通用/技术/社区/影音/学术/购物/图片）一点即换，竖栏 ☰ 可就地切组，可自建气泡分组并整套导入导出
 // @description:en Grab the query already typed on the page and re-run it on another engine. A draggable side rail that snaps to edges.
 // @author       wioaa
 // @license      MIT
@@ -28,6 +28,7 @@
   const DEFAULTS = {
     hotkey: 'alt+s',
     openNew: false,   // false = 本窗口刷新切换，true = 新标签页打开
+    cats: false,      // 竖栏里是否展开「引擎分组」快捷切换
     w: 172,           // 竖栏宽度 px
     // 位置：m = left | right | bottom | free；x / y 是 0~1 的比例，换分辨率也不跑偏
     pos: { m: 'right', x: 0.5, y: 0.5 },
@@ -123,6 +124,7 @@
     if (!cfg.engines.length) cfg.engines = JSON.parse(JSON.stringify(DEFAULTS.engines));
     if (!cfg.hotkey) cfg.hotkey = DEFAULTS.hotkey;
     cfg.openNew = !!cfg.openNew;
+    cfg.cats = !!cfg.cats;
     cfg.w = clampW(cfg.w);
     cfg.pos = {
       m: MODES.includes(cfg.pos && cfg.pos.m) ? cfg.pos.m : 'right',
@@ -179,7 +181,7 @@
 .grip::after{content:'';position:absolute;top:50%;left:2px;width:2px;height:34px;margin-top:-17px;background:#4a5462;border-radius:2px;opacity:0;transition:opacity .15s}
 .rail.dock-left .grip::after{left:auto;right:2px}
 .rail:hover .grip::after,.rail.drag .grip::after{opacity:1}
-.q{font-size:11.5px;line-height:1.5;color:#8b929c;padding:1px 4px 7px;margin-bottom:7px;border-bottom:1px solid #262b34;max-height:2.9em;overflow:hidden;word-break:break-word}
+.q{font-size:11.5px;line-height:1.5;color:#8b929c;padding:1px 27px 7px 4px;margin-bottom:7px;border-bottom:1px solid #262b34;max-height:2.9em;overflow:hidden;word-break:break-word}
 .q b{color:#fff;font-weight:600}
 .list{display:flex;flex-direction:column;gap:2px;overflow-y:auto;margin:0 -2px;padding:0 2px}
 .list::-webkit-scrollbar{width:5px}
@@ -189,10 +191,23 @@
 .eng.cur{opacity:.4;cursor:default;background:transparent;border-color:transparent}
 .eng.cur:hover{background:transparent;border-color:transparent;color:#dfe3e9}
 .dot{width:6px;height:6px;border-radius:50%;flex:none}
-.foot{display:flex;align-items:center;gap:3px;margin-top:7px;padding-top:7px;border-top:1px solid #262b34}
-.mode{flex:1;height:24px;padding:0 6px;border-radius:7px;border:1px solid #333a45;background:#1d222a;color:#9aa1ab;cursor:pointer;font-size:11.5px;line-height:1;font-family:inherit}
+/* 竖栏里的分组快捷切换：右上角 ☰ 展开一排小气泡 */
+.catbtn{position:absolute;top:3px;right:3px;z-index:3;width:22px;height:22px;padding:0;border:0;border-radius:6px;background:transparent;color:#9aa1ab;font-size:13px;line-height:1;cursor:pointer;font-family:inherit;opacity:.9}
+.catbtn:hover{background:#2a313c;color:#fff;opacity:1}
+.catbtn.on{color:#7fb0ff;opacity:1;background:rgba(47,107,255,.14)}
+.cats{display:none;flex-wrap:wrap;gap:4px;margin-top:7px;padding-top:7px;border-top:1px solid #262b34;max-height:28vh;overflow-y:auto}
+.cats.on{display:flex}
+.cats::-webkit-scrollbar{width:5px}
+.cats::-webkit-scrollbar-thumb{background:#39404c;border-radius:3px}
+.cat{flex:none;padding:3px 9px;border-radius:999px;border:1px solid #333a45;background:#1b1f26;color:#cfd6df;font-size:11.5px;line-height:1.45;cursor:pointer;font-family:inherit;white-space:nowrap;transition:transform .14s,border-color .14s,background .14s,color .14s}
+.cat:hover{transform:translateY(-1px);border-color:#4d5866;color:#fff}
+.cat.on{border-color:#2f6bff;background:#22386a;color:#fff}
+.cat.pop{animation:catPop .4s cubic-bezier(.2,.9,.3,1.5)}
+@keyframes catPop{0%{transform:none}34%{transform:translateY(-5px) scale(1.12)}68%{transform:translateY(1px) scale(.97)}100%{transform:none}}
+.foot{display:flex;align-items:center;gap:2px;margin-top:7px;padding-top:7px;border-top:1px solid #262b34}
+.mode{flex:1 1 auto;min-width:0;height:24px;padding:0 4px;white-space:nowrap;overflow:hidden;border-radius:7px;border:1px solid #333a45;background:#1d222a;color:#9aa1ab;cursor:pointer;font-size:11.5px;line-height:1;font-family:inherit}
 .mode:hover{background:#2a313c;border-color:#4a5462;color:#fff}
-.ic{width:24px;height:24px;flex:none;border:0;border-radius:7px;background:transparent;color:#8b929c;cursor:pointer;font-size:13px;line-height:1;padding:0;font-family:inherit}
+.ic{width:21px;height:21px;flex:none;border:0;border-radius:7px;background:transparent;color:#8b929c;cursor:pointer;font-size:13px;line-height:1;padding:0;font-family:inherit}
 .ic:hover{background:#2a313c;color:#fff}
 .panel{position:fixed;left:0;top:0;z-index:2147483647;display:none;width:min(408px,calc(100vw - 24px));max-height:min(82vh,780px);overflow-y:auto;background:#15171c;border:1px solid #2a2e36;border-radius:13px;padding:13px;box-shadow:0 18px 50px rgba(0,0,0,.55);font:13px/1.6 -apple-system,"Segoe UI",system-ui,"PingFang SC","Microsoft YaHei",sans-serif;color:#e6e8eb}
 .panel.on{display:block}
@@ -248,8 +263,10 @@
   const HTML = `
 <div class="rail" id="bar">
   <div class="grip" data-grip title="拖动调整宽度"></div>
+  <button class="catbtn" data-a="cats" title="引擎分组（点开可整组切换）">☰</button>
   <div class="q" id="q"></div>
   <div class="list" id="engs"></div>
+  <div class="cats" id="cats"></div>
   <div class="foot">
     <button class="mode" data-a="mode" title="点击切换：本页刷新 / 新标签打开">本页</button>
     <button class="ic" data-a="flip" title="翻到另一边">⇄</button>
@@ -611,6 +628,7 @@
 
   function refresh() {
     const q = detect();
+    renderCats();   // 分组气泡跟配置走，与有没有搜索词无关
     if (!q) { lastQ = ''; $('#bar').classList.remove('on'); return; }
     renderBar(q);
     if (!dismissed) {
@@ -726,9 +744,11 @@
     save(cfg);
     $('#ta').value = serialize(cfg.engines);
     renderGroups();
-    popBubble(i);
+    renderCats();
     popEngines = true;   // 竖栏里的引擎逐个弹入
-    refresh();
+    refresh();           // 注意：refresh 里还会再 renderCats 一次，所以弹出动画必须放在它后面
+    popBubble(i);
+    popCat(i);
     if ($('#panel').classList.contains('on')) placePanel();
     toast(`已切到「${g.name}」· ${cfg.engines.length} 个引擎`);
   }
@@ -755,6 +775,7 @@
       cfg.groups[i].name = v || old;
       b.textContent = cfg.groups[i].name;
       save(cfg);
+      renderCats();
       // 这里不重绘整排：一旦重绘，刚被点到的其它气泡会被换掉，紧接着的 click 就丢了
     };
     b.addEventListener('blur', done, { once: true });
@@ -774,6 +795,7 @@
     cfg.groups.push({ name: `自定义 ${n}`, engines: JSON.parse(JSON.stringify(cfg.engines)) });
     save(cfg);
     renderGroups();
+    renderCats();
     popBubble(cfg.groups.length - 1);
     const b = $$('#groups .bub b')[cfg.groups.length - 1];
     if (b) renameGroup(cfg.groups.length - 1, b);
@@ -783,9 +805,38 @@
     if (!cfg.groups[i]) return;
     const name = cfg.groups[i].name;
     cfg.groups.splice(i, 1);
+    if (!cfg.groups.length) cfg.cats = false;   // 一组不剩就把展开状态也收掉
     save(cfg);
     renderGroups();
+    renderCats();
     toast(`已删除分组「${name}」`);
+  }
+
+  /* ---- 竖栏里的分组快捷切换 ---- */
+  function renderCats() {
+    const box = $('#cats');
+    box.innerHTML = cfg.groups.map((g, i) =>
+      `<button class="cat${sameEngines(g) ? ' on' : ''}" data-a="cat" data-i="${i}" ` +
+      `title="${esc(g.name)}：${g.engines.length} 个引擎">${esc(g.name)}</button>`).join('');
+    box.classList.toggle('on', !!cfg.cats && cfg.groups.length > 0);
+    $('.catbtn').classList.toggle('on', !!cfg.cats);
+  }
+
+  function toggleCats() {
+    if (!cfg.cats && !cfg.groups.length) return toast('还没有分组：⚙ 里「引擎分组」可以存一组');
+    cfg.cats = !cfg.cats;
+    save(cfg);
+    renderCats();
+    applyPos();
+  }
+
+  function popCat(i) {
+    const el = $$('#cats .cat')[i];
+    if (!el) return;
+    el.classList.remove('pop');
+    void el.offsetWidth;
+    el.classList.add('pop');
+    setTimeout(() => el.classList.remove('pop'), 420);
   }
 
   /* ---- 导出 / 写入 ---- */
@@ -954,6 +1005,8 @@
       placePanel();
       return;
     }
+    if (a === 'cats') return toggleCats();
+    if (a === 'cat') return applyGroup(+el.dataset.i);
     if (a === 'set') return $('#panel').classList.contains('on') ? closePanel() : openPanel();
     if (a === 'cancel') return closePanel();
     if (a === 'save') return saveSettings();

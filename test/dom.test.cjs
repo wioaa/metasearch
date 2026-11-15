@@ -324,6 +324,28 @@ function boot(url, html = '<body></body>', before) {
   // 改名状态下的键盘不能误触全局快捷键 / Esc 关面板
   gx.$('[data-a="set"]').click();
 
+  /* ---------- 竖栏里的分组快捷切换（☰）---------- */
+  const cy = boot('https://example.com/search?q=dog');
+  const ccfg = () => JSON.parse(cy.win.localStorage.getItem('metasearch:cfg'));
+  t('默认不展开分组栏', !cy.$('#cats').classList.contains('on'));
+  cy.$('[data-a="cats"]').click();
+  t('☰ 展开分组栏', cy.$('#cats').classList.contains('on'));
+  t('展开后有 7 个分组', cy.$$('#cats .cat').length === 7, cy.$$('#cats .cat').length);
+  t('展开状态落盘', ccfg().cats === true);
+  t('☰ 按钮显示激活态', cy.$('.catbtn').classList.contains('on'));
+
+  cy.$$('#cats .cat')[2].click();          // 社区
+  t('栏内点分组整套换引擎', cy.$$('.eng').length === 6 && cy.$$('.eng')[0].textContent === '知乎',
+    cy.$$('.eng').length + '/' + (cy.$$('.eng')[0] || {}).textContent);
+  t('栏内当前分组高亮', cy.$$('#cats .cat.on').length === 1
+    && cy.$$('#cats .cat.on')[0].textContent === '社区', cy.$$('#cats .cat.on')[0].textContent);
+  t('换分组后搜索词不变', cy.$('#q').textContent.includes('dog'), cy.$('#q').textContent);
+  t('栏内气泡有弹起动画', cy.$$('#cats .cat')[2].classList.contains('pop'));
+
+  cy.$('[data-a="cats"]').click();
+  t('再点 ☰ 收起', !cy.$('#cats').classList.contains('on'));
+  t('收起状态也落盘', ccfg().cats === false);
+
   console.log('PASS ' + ok.length);
   ok.forEach(n => console.log('  ✓ ' + n));
   if (bad.length) {
