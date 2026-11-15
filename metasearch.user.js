@@ -2,8 +2,8 @@
 // @name         聚合搜索 MetaSearch
 // @name:en      MetaSearch - Quick Engine Switcher
 // @namespace    https://github.com/wioaa/metasearch
-// @version      2.2.0
-// @description  自动读取当前页面的搜索词（搜索框内容 / URL 参数），一键换成别的搜索引擎；竖栏可拖拽、靠边吸附、多套布局预设，配置与预设模板均可导出导入
+// @version      2.3.0
+// @description  自动读取当前页面的搜索词（搜索框内容 / URL 参数），一键换成别的搜索引擎；竖栏可拖拽、靠边吸附，引擎按用途分组（通用/技术/社区/影音/学术/购物/图片）一点即换，可自建气泡分组并整套导入导出
 // @description:en Grab the query already typed on the page and re-run it on another engine. A draggable side rail that snaps to edges.
 // @author       wioaa
 // @license      MIT
@@ -37,15 +37,73 @@
       { name: '贴右·宽', m: 'right', x: 0.5, y: 0.5, w: 280 },
       { name: '贴左·中', m: 'left', x: 0.5, y: 0.5, w: 200 },
     ],
-    engines: [        // %s 就是搜索词；数组顺序 = 竖栏顺序
+    // 引擎分组：按「你拿它干什么」分，而不是按国内/国外
+    groups: [
+      { name: '通用', engines: [
+        { name: '百度', url: 'https://www.baidu.com/s?wd=%s' },
+        { name: 'Bing', url: 'https://cn.bing.com/search?q=%s' },
+        { name: 'Google', url: 'https://www.google.com/search?q=%s' },
+        { name: 'DuckDuckGo', url: 'https://duckduckgo.com/?q=%s' },
+        { name: '搜狗', url: 'https://www.sogou.com/web?query=%s' },
+        { name: '360', url: 'https://www.so.com/s?q=%s' },
+        { name: 'Yandex', url: 'https://yandex.com/search/?text=%s' },
+      ] },
+      { name: '技术', engines: [
+        { name: 'GitHub', url: 'https://github.com/search?q=%s' },
+        { name: 'Stack Overflow', url: 'https://stackoverflow.com/search?q=%s' },
+        { name: 'MDN', url: 'https://developer.mozilla.org/zh-CN/search?q=%s' },
+        { name: 'npm', url: 'https://www.npmjs.com/search?q=%s' },
+        { name: '掘金', url: 'https://juejin.cn/search?query=%s' },
+        { name: 'CSDN', url: 'https://so.csdn.net/so/search?q=%s' },
+        { name: 'Hacker News', url: 'https://hn.algolia.com/?q=%s' },
+      ] },
+      { name: '社区', engines: [
+        { name: '知乎', url: 'https://www.zhihu.com/search?type=content&q=%s' },
+        { name: '微博', url: 'https://s.weibo.com/weibo?q=%s' },
+        { name: '豆瓣', url: 'https://www.douban.com/search?q=%s' },
+        { name: 'V2EX', url: 'https://www.v2ex.com/search?q=%s' },
+        { name: '贴吧', url: 'https://tieba.baidu.com/f/search/res?qw=%s' },
+        { name: 'Reddit', url: 'https://www.reddit.com/search/?q=%s' },
+      ] },
+      { name: '影音', engines: [
+        { name: 'B站', url: 'https://search.bilibili.com/all?keyword=%s' },
+        { name: 'YouTube', url: 'https://www.youtube.com/results?search_query=%s' },
+        { name: '网易云音乐', url: 'https://music.163.com/#/search/m/?s=%s' },
+        { name: '腾讯视频', url: 'https://v.qq.com/x/search/?q=%s' },
+        { name: '优酷', url: 'https://so.youku.com/search_video/q_%s' },
+        { name: '豆瓣电影', url: 'https://search.douban.com/movie/subject_search?search_text=%s' },
+      ] },
+      { name: '学术', engines: [
+        { name: '谷歌学术', url: 'https://scholar.google.com/scholar?q=%s' },
+        { name: 'arXiv', url: 'https://arxiv.org/search/?query=%s&searchtype=all' },
+        { name: 'PubMed', url: 'https://pubmed.ncbi.nlm.nih.gov/?term=%s' },
+        { name: 'Semantic Scholar', url: 'https://www.semanticscholar.org/search?q=%s' },
+        { name: '知网', url: 'https://kns.cnki.net/kns8s/defaultresult/index?kw=%s' },
+      ] },
+      { name: '购物', engines: [
+        { name: '淘宝', url: 'https://s.taobao.com/search?q=%s' },
+        { name: '京东', url: 'https://search.jd.com/Search?keyword=%s' },
+        { name: '1688', url: 'https://s.1688.com/selloffer/offer_search.htm?keywords=%s' },
+        { name: '亚马逊', url: 'https://www.amazon.cn/s?k=%s' },
+        { name: '什么值得买', url: 'https://search.smzdm.com/?c=home&s=%s' },
+      ] },
+      { name: '图片', engines: [
+        { name: '百度图片', url: 'https://image.baidu.com/search/index?tn=baiduimage&word=%s' },
+        { name: '必应图片', url: 'https://www.bing.com/images/search?q=%s' },
+        { name: 'Google 图片', url: 'https://www.google.com/search?tbm=isch&q=%s' },
+        { name: 'Unsplash', url: 'https://unsplash.com/s/photos/%s' },
+        { name: 'Pinterest', url: 'https://www.pinterest.com/search/pins/?q=%s' },
+      ] },
+    ],
+    // 首次装上时的引擎列表 = 「通用」那一组，这样一打开就有一组是亮的，看得懂这排气泡在干嘛
+    engines: [
       { name: '百度', url: 'https://www.baidu.com/s?wd=%s' },
-      { name: 'Bing', url: 'https://www.bing.com/search?q=%s' },
+      { name: 'Bing', url: 'https://cn.bing.com/search?q=%s' },
       { name: 'Google', url: 'https://www.google.com/search?q=%s' },
       { name: 'DuckDuckGo', url: 'https://duckduckgo.com/?q=%s' },
-      { name: '知乎', url: 'https://www.zhihu.com/search?type=content&q=%s' },
-      { name: 'B站', url: 'https://search.bilibili.com/all?keyword=%s' },
-      { name: 'GitHub', url: 'https://github.com/search?q=%s' },
-      { name: '维基', url: 'https://zh.wikipedia.org/w/index.php?search=%s' },
+      { name: '搜狗', url: 'https://www.sogou.com/web?query=%s' },
+      { name: '360', url: 'https://www.so.com/s?q=%s' },
+      { name: 'Yandex', url: 'https://yandex.com/search/?text=%s' },
     ],
   };
 
@@ -59,10 +117,9 @@
   // 把任意来源（存储 / 导入的 JSON）整理成合法配置
   function normalize(got) {
     const hadPresets = Array.isArray(got && got.presets); // 明确写了空数组 = 用户确实不要预设
+    const hadGroups = Array.isArray(got && got.groups);
     const cfg = Object.assign(JSON.parse(JSON.stringify(DEFAULTS)), got || {});
-    cfg.engines = (Array.isArray(cfg.engines) ? cfg.engines : [])
-      .map(e => ({ name: String(e.name || ''), url: String(e.url || '') }))
-      .filter(e => e.name && e.url);
+    cfg.engines = cleanEngines(cfg.engines);
     if (!cfg.engines.length) cfg.engines = JSON.parse(JSON.stringify(DEFAULTS.engines));
     if (!cfg.hotkey) cfg.hotkey = DEFAULTS.hotkey;
     cfg.openNew = !!cfg.openNew;
@@ -81,7 +138,18 @@
       };
     }).slice(0, 8);
     if (!cfg.presets.length && !hadPresets) cfg.presets = JSON.parse(JSON.stringify(DEFAULTS.presets));
+    cfg.groups = (Array.isArray(cfg.groups) ? cfg.groups : []).map(g => ({
+      name: String((g && g.name) || '').slice(0, 16) || '引擎组',
+      engines: cleanEngines(g && g.engines).slice(0, 30),
+    })).filter(g => g.engines.length).slice(0, 10);
+    if (!cfg.groups.length && !hadGroups) cfg.groups = JSON.parse(JSON.stringify(DEFAULTS.groups));
     return cfg;
+  }
+
+  function cleanEngines(list) {
+    return (Array.isArray(list) ? list : [])
+      .map(e => ({ name: String(e.name || ''), url: String(e.url || '') }))
+      .filter(e => e.name && e.url);
   }
 
   function load() {
@@ -137,6 +205,25 @@
 .pill b{font-weight:400;cursor:pointer}
 .pill i{font-style:normal;color:#7c828c;cursor:pointer;font-size:11px;padding:0 4px;border-radius:6px}
 .pill i:hover{color:#ff8585;background:#2a2f39}
+/* 引擎分组气泡：点一下整组替换，带弹起反馈 */
+.bubs{display:flex;flex-wrap:wrap;gap:7px;padding:2px 0 4px}
+.bub{position:relative;display:inline-flex;align-items:center;gap:5px;padding:5px 9px 5px 12px;border-radius:999px;border:1px solid #343b47;background:linear-gradient(180deg,#212630,#191d24);color:#dfe3e9;font-size:12.5px;line-height:1.2;cursor:pointer;user-select:none;white-space:nowrap;transition:transform .16s cubic-bezier(.2,.9,.3,1.4),border-color .16s,background .16s,box-shadow .16s,color .16s}
+.bub:hover{transform:translateY(-2px);border-color:#4d5866;box-shadow:0 6px 16px rgba(0,0,0,.4)}
+.bub:active{transform:translateY(0) scale(.95)}
+.bub.on{border-color:#2f6bff;background:linear-gradient(180deg,#27467f,#1b2c52);color:#fff;box-shadow:0 5px 16px rgba(47,107,255,.32);transform:translateY(-2px)}
+.bub .n{font-style:normal;font-size:10.5px;color:#8b929c;background:#0d1015;border-radius:999px;padding:1px 5px;min-width:15px;text-align:center;font-variant-numeric:tabular-nums}
+.bub.on .n{color:#cfe0ff;background:rgba(255,255,255,.14)}
+.bub .pen,.bub .x{font-style:normal;color:#77808c;font-size:11px;padding:0 1px;visibility:hidden}
+.bub:hover .pen,.bub:hover .x{visibility:visible}
+.bub .pen:hover{color:#8fbcff}
+.bub .x:hover{color:#ff8585}
+.bub b{font-weight:400;outline:0;cursor:pointer}
+.bub b[contenteditable="true"]{cursor:text;border-bottom:1px dashed #6f7b8b;padding-bottom:1px}
+.bub.pop{animation:bubPop .44s cubic-bezier(.2,.9,.3,1.5)}
+@keyframes bubPop{0%{transform:translateY(0) scale(1)}34%{transform:translateY(-8px) scale(1.14)}66%{transform:translateY(-1px) scale(.97)}100%{transform:translateY(-2px) scale(1)}}
+.eng.pop{animation:engPop .36s cubic-bezier(.2,.9,.3,1.5) both}
+@keyframes engPop{0%{opacity:0;transform:translateY(9px) scale(.93)}100%{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.bub,.bub.pop,.eng.pop{animation:none;transition:none}}
 .panel textarea{width:100%;resize:vertical;background:#0f1115;border:1px solid #2a2e36;border-radius:8px;color:#e6e8eb;padding:8px 10px;font:12px/1.7 ui-monospace,SFMono-Regular,monospace;outline:0}
 .panel textarea:focus{border-color:#4c8dff}
 #ta{height:142px}
@@ -185,23 +272,28 @@
   <div class="lbl" style="margin-top:12px"><span>布局预设</span><button class="btn sm" data-a="addpreset" title="把当前位置 + 宽度存成一个预设">＋ 存当前</button></div>
   <div class="row" style="margin-top:0" id="presets"></div>
 
+  <div class="lbl" style="margin-top:12px"><span>引擎分组</span><button class="btn sm" data-a="addgroup" title="把当前引擎列表存成一组">＋ 存当前</button></div>
+  <div class="bubs" id="groups"></div>
+
   <div class="lbl" style="margin-top:12px"><span>搜索引擎</span><span class="tip" style="margin:0">名称 | URL，%s = 搜索词</span></div>
   <textarea id="ta" spellcheck="false" placeholder="百度 | https://www.baidu.com/s?wd=%s"></textarea>
 
   <div class="lbl" style="margin-top:12px"><span>快捷键</span><span class="tip" style="margin:0">点输入框后按组合键</span></div>
   <div class="row" style="margin-top:0"><input id="hk" readonly></div>
 
-  <div class="lbl" style="margin-top:12px"><span>配置备份</span><span class="tip" style="margin:0">整份配置 / 仅模板</span></div>
+  <div class="lbl" style="margin-top:12px"><span>配置备份</span><span class="tip" style="margin:0">整份 / 布局 / 引擎</span></div>
   <div class="row" style="margin-top:0">
     <button class="btn sm" data-a="expCfg">导出整份</button>
-    <button class="btn sm" data-a="expPre">导出模板</button>
+    <button class="btn sm" data-a="expLayout">导出布局</button>
+    <button class="btn sm" data-a="expEng">导出引擎</button>
     <button class="btn sm" data-a="impFile">导入文件</button>
     <input type="file" id="impFile" accept=".json,application/json" style="display:none">
   </div>
   <textarea id="io" spellcheck="false" placeholder="「导出」会把 JSON 放到这里；也可以粘贴别人的配置/模板，再点下面「写入」"></textarea>
   <div class="row" style="margin-top:6px">
     <button class="btn sm" data-a="writeCfg">写入配置</button>
-    <button class="btn sm" data-a="writePre">写入预设</button>
+    <button class="btn sm" data-a="writeLayout">写入布局</button>
+    <button class="btn sm" data-a="writeEng">写入引擎</button>
   </div>
 
   <div class="row" style="margin-top:14px;justify-content:flex-end">
@@ -240,6 +332,7 @@
   let toastTimer = 0;
   let drag = null;
   let grip = null;
+  let popEngines = false;   // 换分组后让竖栏里的引擎逐个弹入
 
   /* ================= 工具 ================= */
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -505,10 +598,14 @@
     $('.mode').textContent = cfg.openNew ? '新窗' : '本页';
     const here = location.hostname.replace(/^www\./, '');
     const tgt = cfg.openNew ? ' target="_blank" rel="noopener noreferrer"' : '';
-    $('#engs').innerHTML = cfg.engines.map(e => {
+    const pop = popEngines;
+    popEngines = false;
+    $('#engs').innerHTML = cfg.engines.map((e, i) => {
+      const cls = pop ? ' eng pop' : '';
+      const sty = pop ? ` style="animation-delay:${Math.min(i * 26, 260)}ms"` : '';
       const dot = `<i class="dot" style="background:hsl(${hue(e.name)} 72% 62%)"></i>`;
-      if (hostOf(e.url) === here) return `<span class="eng cur" title="当前引擎">${dot}${esc(e.name)}</span>`;
-      return `<a class="eng" href="${esc(buildUrl(e.url, q))}"${tgt} title="${esc(e.url)}">${dot}${esc(e.name)}</a>`;
+      if (hostOf(e.url) === here) return `<span class="eng cur${cls}"${sty} title="当前引擎">${dot}${esc(e.name)}</span>`;
+      return `<a class="eng${cls}"${sty} href="${esc(buildUrl(e.url, q))}"${tgt} title="${esc(e.url)}">${dot}${esc(e.name)}</a>`;
     }).join('');
   }
 
@@ -594,6 +691,103 @@
     toast('已删除预设');
   }
 
+  /* ---- 引擎分组（按用途成套换引擎，气泡点一下就换）---- */
+  const sameEngines = g => g.engines.length === cfg.engines.length
+    && g.engines.every((e, i) => e.name === cfg.engines[i].name && e.url === cfg.engines[i].url);
+
+  function renderGroups() {
+    const box = $('#groups');
+    if (!cfg.groups.length) {
+      box.innerHTML = '<span class="tip" style="margin:0">还没有分组，点右上「＋ 存当前」把现在的引擎存成一组</span>';
+      return;
+    }
+    box.innerHTML = cfg.groups.map((g, i) =>
+      `<span class="bub${sameEngines(g) ? ' on' : ''}" data-a="group" data-i="${i}" title="${esc(g.name)}：${g.engines.length} 个引擎，点一下整套切换">` +
+      `<b data-a="group" data-i="${i}">${esc(g.name)}</b>` +
+      `<i class="n">${g.engines.length}</i>` +
+      `<i class="pen" data-a="rname" data-i="${i}" title="重命名">✎</i>` +
+      `<i class="x" data-a="delgroup" data-i="${i}" title="删除这组">✕</i></span>`).join('');
+  }
+
+  // 气泡“弹一下”：先移除类、强制重排，动画才能重播
+  function popBubble(i) {
+    const el = $$('#groups .bub')[i];
+    if (!el) return;
+    el.classList.remove('pop');
+    void el.offsetWidth;
+    el.classList.add('pop');
+    setTimeout(() => el.classList.remove('pop'), 470);
+  }
+
+  function applyGroup(i) {
+    const g = cfg.groups[i];
+    if (!g) return;
+    cfg.engines = JSON.parse(JSON.stringify(g.engines));
+    save(cfg);
+    $('#ta').value = serialize(cfg.engines);
+    renderGroups();
+    popBubble(i);
+    popEngines = true;   // 竖栏里的引擎逐个弹入
+    refresh();
+    if ($('#panel').classList.contains('on')) placePanel();
+    toast(`已切到「${g.name}」· ${cfg.engines.length} 个引擎`);
+  }
+
+  // 用属性判断而不是 isContentEditable：后者在部分环境（jsdom）里未实现
+  const isEditing = el => !!el && el.getAttribute && el.getAttribute('contenteditable') === 'true';
+
+  function renameGroup(i, b) {
+    if (!cfg.groups[i] || !b || isEditing(b)) return;
+    const old = cfg.groups[i].name;
+    b.setAttribute('contenteditable', 'true');
+    b.focus();
+    try {
+      const r = document.createRange();
+      r.selectNodeContents(b);
+      const s = window.getSelection();
+      s.removeAllRanges();
+      s.addRange(r);
+    } catch (e) {}
+    const done = () => {
+      if (!isEditing(b)) return;
+      b.setAttribute('contenteditable', 'false');
+      const v = b.textContent.replace(/\s+/g, ' ').trim().slice(0, 12);
+      cfg.groups[i].name = v || old;
+      b.textContent = cfg.groups[i].name;
+      save(cfg);
+      // 这里不重绘整排：一旦重绘，刚被点到的其它气泡会被换掉，紧接着的 click 就丢了
+    };
+    b.addEventListener('blur', done, { once: true });
+    b.addEventListener('keydown', ev => {
+      if (ev.key === 'Enter') { ev.preventDefault(); b.blur(); }
+      else if (ev.key === 'Escape') { ev.preventDefault(); b.textContent = old; b.blur(); }
+      ev.stopPropagation();
+    });
+  }
+
+  function addGroup() {
+    if (cfg.groups.length >= 10) return toast('分组最多 10 组');
+    if (cfg.groups.some(sameEngines)) return toast('当前引擎列表已经存过了');
+    const used = new Set(cfg.groups.map(g => g.name));
+    let n = 1;
+    while (used.has(`自定义 ${n}`)) n++;
+    cfg.groups.push({ name: `自定义 ${n}`, engines: JSON.parse(JSON.stringify(cfg.engines)) });
+    save(cfg);
+    renderGroups();
+    popBubble(cfg.groups.length - 1);
+    const b = $$('#groups .bub b')[cfg.groups.length - 1];
+    if (b) renameGroup(cfg.groups.length - 1, b);
+  }
+
+  function delGroup(i) {
+    if (!cfg.groups[i]) return;
+    const name = cfg.groups[i].name;
+    cfg.groups.splice(i, 1);
+    save(cfg);
+    renderGroups();
+    toast(`已删除分组「${name}」`);
+  }
+
   /* ---- 导出 / 写入 ---- */
   function downloadJson(name, text) {
     try {
@@ -611,19 +805,26 @@
 
   function exportCfg() {
     const json = JSON.stringify({
-      v: 2, hotkey: cfg.hotkey, openNew: cfg.openNew, w: cfg.w,
-      pos: cfg.pos, presets: cfg.presets, engines: cfg.engines,
+      kind: 'config', v: 2, hotkey: cfg.hotkey, openNew: cfg.openNew, w: cfg.w,
+      pos: cfg.pos, presets: cfg.presets, groups: cfg.groups, engines: cfg.engines,
     }, null, 2);
     $('#io').value = json;
     downloadJson('metasearch-config.json', json);
-    toast(`已导出整份配置：${cfg.engines.length} 引擎 / ${cfg.presets.length} 预设`);
+    toast(`已导出整份：${cfg.engines.length} 引擎 / ${cfg.presets.length} 布局 / ${cfg.groups.length} 引擎预设`);
   }
 
-  function exportPresets() {
-    const json = JSON.stringify({ presets: cfg.presets }, null, 2);
+  function exportLayout() {
+    const json = JSON.stringify({ kind: 'layout', presets: cfg.presets }, null, 2);
     $('#io').value = json;
-    downloadJson('metasearch-presets.json', json);
-    toast(`已导出 ${cfg.presets.length} 个预设模板`);
+    downloadJson('metasearch-layout.json', json);
+    toast(`已导出 ${cfg.presets.length} 个布局预设`);
+  }
+
+  function exportEngines() {
+    const json = JSON.stringify({ kind: 'engines', engines: cfg.engines, groups: cfg.groups }, null, 2);
+    $('#io').value = json;
+    downloadJson('metasearch-engines.json', json);
+    toast(`已导出 ${cfg.engines.length} 个引擎 + ${cfg.groups.length} 组预设`);
   }
 
   function writeConfig(o) {
@@ -637,28 +838,59 @@
     $('#io').value = '';
     markPos();
     renderPresets();
+    renderGroups();
     settle();
     refresh();
-    toast(`已写入：${cfg.engines.length} 个引擎、${cfg.presets.length} 个预设`);
+    toast(`已写入：${cfg.engines.length} 个引擎、${cfg.presets.length} 个布局、${cfg.groups.length} 组预设`);
   }
 
-  function writePresets(o) {
+  function writeLayout(o) {
     const arr = Array.isArray(o) ? o : (o && Array.isArray(o.presets) ? o.presets : null);
     if (!arr) return toast('没找到 presets 数组');
-    if (!arr.length) return toast('这份模板里没有预设');
+    if (!arr.length) return toast('这份布局模板里没有预设');
     const next = normalize(Object.assign({}, cfg, { presets: arr })).presets;
     cfg.presets = next;
     save(cfg);
     renderPresets();
-    toast(`已写入 ${next.length} 个预设模板`);
+    toast(`已写入 ${next.length} 个布局预设`);
   }
 
-  function writeFromText(onlyPresets) {
+  function writeEngines(o) {
+    const engs = Array.isArray(o) ? o : (o && Array.isArray(o.engines) ? o.engines : null);
+    const groups = Array.isArray(o) ? null : (o && Array.isArray(o.groups) ? o.groups : null);
+    if (!engs && !groups) return toast('没找到 engines / groups');
+    if (engs && !cleanEngines(engs).length) return toast('这份引擎列表是空的');
+    const next = normalize(Object.assign({}, cfg, engs ? { engines: engs } : {}, groups ? { groups } : {}));
+    if (engs) cfg.engines = next.engines;
+    if (groups) cfg.groups = next.groups;
+    save(cfg);
+    $('#ta').value = serialize(cfg.engines);
+    renderGroups();
+    refresh();
+    toast(`已写入 ${engs ? cfg.engines.length + ' 个引擎' : ''}${engs && groups ? '，' : ''}${groups ? cfg.groups.length + ' 组预设' : ''}`);
+  }
+
+  // 认一下粘进来/导入的 JSON 是哪一类
+  function kindOf(o) {
+    if (!o || Array.isArray(o)) return '';
+    if (o.kind === 'config' || o.kind === 'layout' || o.kind === 'engines') return o.kind;
+    if (Array.isArray(o.engines) && (o.pos || o.hotkey || o.presets)) return 'config';
+    if (Array.isArray(o.engines)) return 'engines';
+    if (Array.isArray(o.presets)) return 'layout';
+    if (Array.isArray(o.groups)) return 'engines';
+    return '';
+  }
+
+  function writeFromText(kind) {
     const t = $('#io').value.trim();
     if (!t) return toast('先把 JSON 粘进上面的框');
     let o;
     try { o = JSON.parse(t); } catch (e) { return toast('JSON 解析失败'); }
-    return onlyPresets ? writePresets(o) : writeConfig(o);
+    const k = kind || kindOf(o);
+    if (k === 'config') return writeConfig(o);
+    if (k === 'layout') return writeLayout(o);
+    if (k === 'engines') return writeEngines(o);
+    return toast('认不出这份 JSON 是哪一类');
   }
 
   function openPanel() {
@@ -669,6 +901,7 @@
     syncHk();
     markPos();
     renderPresets();
+    renderGroups();
     $('#panel').classList.add('on');
     placePanel();
   }
@@ -727,11 +960,21 @@
     if (a === 'addpreset') return addPreset();
     if (a === 'preset') return applyPreset(+el.dataset.i);
     if (a === 'delpreset') return delPreset(+el.dataset.i);
+    if (a === 'addgroup') return addGroup();
+    if (a === 'group') {
+      const b = el.tagName === 'B' ? el : el.querySelector('b');
+      if (isEditing(el) || isEditing(b)) return;   // 正在改名，别把分组切走
+      return applyGroup(+el.dataset.i);
+    }
+    if (a === 'rname') return renameGroup(+el.dataset.i, el.parentElement.querySelector('b'));
+    if (a === 'delgroup') return delGroup(+el.dataset.i);
     if (a === 'expCfg') return exportCfg();
-    if (a === 'expPre') return exportPresets();
+    if (a === 'expLayout') return exportLayout();
+    if (a === 'expEng') return exportEngines();
     if (a === 'impFile') return $('#impFile').click();
-    if (a === 'writeCfg') return writeFromText(false);
-    if (a === 'writePre') return writeFromText(true);
+    if (a === 'writeCfg') return writeFromText('config');
+    if (a === 'writeLayout') return writeFromText('layout');
+    if (a === 'writeEng') return writeFromText('engines');
   });
 
   $('#hk').addEventListener('keydown', e => {
@@ -774,8 +1017,9 @@
       $('#io').value = text;
       let o;
       try { o = JSON.parse(text); } catch (err) { return toast('这个文件不是合法 JSON'); }
-      if (o && Array.isArray(o.engines)) writeConfig(o);
-      else writePresets(o);
+      const k = kindOf(o);
+      if (!k) return toast('认不出这份 JSON 是哪一类');
+      writeFromText(k);
     };
     fr.readAsText(f);
     e.target.value = '';
@@ -797,6 +1041,9 @@
   });
 
   document.addEventListener('keydown', e => {
+    const path = e.composedPath ? e.composedPath() : [];
+    // 正在给分组改名：键盘全交给那个可编辑元素（capture 阶段先放过，别抢 Esc）
+    if (path.some(n => isEditing(n))) return;
     if (e.key === 'Escape') {
       if ($('#panel').classList.contains('on')) { closePanel(); return; }
       if ($('#bar').classList.contains('on')) { dismissed = true; $('#bar').classList.remove('on'); }

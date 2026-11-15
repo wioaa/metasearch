@@ -31,7 +31,7 @@ function boot(url, html = '<body></body>', before) {
   const a = boot('https://example.com/search?q=hello%20world');
   t('URL 里的 q 被读到', a.$('#bar').classList.contains('on'));
   t('搜索词显示在栏里', a.$('#q').textContent.includes('hello world'), a.$('#q').textContent);
-  t('默认 8 个引擎', a.$$('.eng').length === 8, a.$$('.eng').length);
+  t('默认 7 个引擎（= 通用组）', a.$$('.eng').length === 7, a.$$('.eng').length);
   t('默认本页模式', a.$('.mode').textContent === '本页');
   t('链接拼接 + 编码正确',
     a.$$('.eng')[0].getAttribute('href') === 'https://www.baidu.com/s?wd=hello%20world',
@@ -132,7 +132,7 @@ function boot(url, html = '<body></body>', before) {
   /* ---------- 设置：增删改引擎 ---------- */
   a.$('[data-a="set"]').click();
   t('设置面板打开', a.$('#panel').classList.contains('on'));
-  t('配置回填 8 行', a.$('#ta').value.split('\n').length === 8, a.$('#ta').value.split('\n').length);
+  t('配置回填 7 行', a.$('#ta').value.split('\n').length === 7, a.$('#ta').value.split('\n').length);
   t('快捷键回填 Alt+S', a.$('#hk').value === 'Alt+S', a.$('#hk').value);
 
   a.$('#ta').value = '# 注释行会被忽略\nhttps://x.com/?q=%s\nBing | https://bing.com/search?q=%s';
@@ -184,7 +184,7 @@ function boot(url, html = '<body></body>', before) {
   t('导出整份引擎数正确', (dumped.engines || []).length === 2, (dumped.engines || []).length);
 
   /* ---------- 模板单独导出 ---------- */
-  a.$('[data-a="expPre"]').click();
+  a.$('[data-a="expLayout"]').click();
   let tpl = {};
   try { tpl = JSON.parse(a.$('#io').value); } catch (e) {}
   t('导出模板只有 presets', !tpl.engines && Array.isArray(tpl.presets), Object.keys(tpl).join(','));
@@ -195,7 +195,7 @@ function boot(url, html = '<body></body>', before) {
     { name: 'M1', m: 'left', x: 0.5, y: 0.5, w: 210 },
     { name: 'M2', m: 'bottom', x: 0.3, y: 0.5, w: 150 },
   ] });
-  a.$('[data-a="writePre"]').click();
+  a.$('[data-a="writeLayout"]').click();
   t('写入模板只换预设', cfgOf().presets.length === 2 && cfgOf().engines.length === 2,
     cfgOf().presets.length + '/' + cfgOf().engines.length);
   t('写入模板保留名称', cfgOf().presets[0].name === 'M1', cfgOf().presets[0].name);
@@ -218,7 +218,7 @@ function boot(url, html = '<body></body>', before) {
   a.$('[data-a="writeCfg"]').click();
   t('坏 JSON 被拦', a.$('.toast').textContent.includes('JSON') && cfgOf().w === 300, a.$('.toast').textContent);
   a.$('#io').value = JSON.stringify({ presets: [] });
-  a.$('[data-a="writePre"]').click();
+  a.$('[data-a="writeLayout"]').click();
   t('空模板被拦', cfgOf().presets.length === 1);
   a.$('[data-a="cancel"]').click();
 
@@ -254,6 +254,75 @@ function boot(url, html = '<body></body>', before) {
   t('无词时给提示', e.$('.toast').textContent.includes('没读到'), e.$('.toast').textContent);
   e.hit('Escape');
   t('Esc 不影响正常页面', !e.$('#bar').classList.contains('on'));
+
+  /* ---------- 引擎分组：分类气泡 ---------- */
+  const gx = boot('https://example.com/search?q=cat');
+  const gcfg = () => JSON.parse(gx.win.localStorage.getItem('metasearch:cfg'));
+  gx.$('[data-a="set"]').click();
+  const names = gx.$$('#groups .bub b').map(n => n.textContent);
+  t('默认按用途分组', ['通用', '技术', '社区', '影音', '学术', '购物', '图片'].every(n => names.includes(n)),
+    names.join('/'));
+  t('不再有国内/国外', !names.includes('国内') && !names.includes('国外'));
+  t('气泡带引擎数量角标', gx.$$('#groups .bub .n').length === names.length,
+    gx.$$('#groups .bub .n').length);
+  t('数量角标与分组一致', gx.$$('#groups .bub .n')[1].textContent === '7',
+    gx.$$('#groups .bub .n')[1].textContent);
+  t('首次安装就有一组亮着', gx.$$('#groups .bub.on').length === 1
+    && gx.$('#groups .bub.on b').textContent === '通用', gx.$('#groups .bub.on b').textContent);
+
+  // 点「技术」气泡 → 整套换成技术类引擎
+  const techIdx = names.indexOf('技术');
+  gx.$$('#groups .bub')[techIdx].click();
+  t('点气泡换整套引擎', gcfg().engines.length === 7 && gcfg().engines[0].name === 'GitHub',
+    gcfg().engines.map(e => e.name).join(','));
+  t('竖栏同步换成新引擎', gx.$$('.eng').length === 7 && gx.$$('.eng')[0].textContent === 'GitHub',
+    gx.$$('.eng')[0].textContent);
+  t('换分组不改其它引擎以外的东西', gcfg().w === 172 && gcfg().pos.m === 'right');
+  t('当前分组气泡高亮', gx.$$('#groups .bub.on').length === 1
+    && gx.$('#groups .bub.on b').textContent === '技术', gx.$('#groups .bub.on b').textContent);
+  t('点击后气泡有弹起动画类', gx.$$('#groups .bub')[techIdx].classList.contains('pop'));
+
+  // 竖栏里的引擎逐个弹入
+  t('引擎带弹入动画', gx.$$('.eng.pop').length === 7, gx.$$('.eng.pop').length);
+
+  // 搜索词不变
+  t('换分组不动搜索词', gx.$('#q').textContent.includes('cat'), gx.$('#q').textContent);
+
+  /* ---------- 自定义分组：存 → 改名 → 删 ---------- */
+  gx.$('#ta').value = '甲 | https://a.com/?q=%s\n乙 | https://b.com/?q=%s';
+  gx.$('[data-a="save"]').click();
+  gx.$('[data-a="set"]').click();
+  const before = gcfg().groups.length;
+  gx.$('[data-a="addgroup"]').click();
+  t('存当前 → 多一组', gcfg().groups.length === before + 1, gcfg().groups.length);
+  t('新分组默认名', gcfg().groups[before].name === '自定义 1', gcfg().groups[before].name);
+  t('新分组存了当前引擎', gcfg().groups[before].engines.length === 2);
+  t('新建后直接进改名状态', gx.$$('#groups .bub b')[before].getAttribute('contenteditable') === 'true');
+  gx.$$('#groups .bub b')[before].textContent = '我的常用';
+  gx.$$('#groups .bub b')[before].blur();
+  t('改名生效并落盘', gcfg().groups[before].name === '我的常用', gcfg().groups[before].name);
+  t('改名后气泡文字更新', gx.$$('#groups .bub b')[before].textContent === '我的常用');
+  gx.$$('#groups .bub .x')[before].click();
+  t('删分组', gcfg().groups.length === before, gcfg().groups.length);
+
+  // 分组可单独导出 / 写入（含引擎 + 分组）
+  gx.$('[data-a="expEng"]').click();
+  let engDump = {};
+  try { engDump = JSON.parse(gx.$('#io').value); } catch (err) {}
+  t('导出引擎含 groups', Array.isArray(engDump.engines) && Array.isArray(engDump.groups),
+    Object.keys(engDump).join(','));
+  gx.$('#io').value = JSON.stringify({ groups: [
+    { name: '只要一组', engines: [{ name: 'Z', url: 'https://z.com/?q=%s' }] },
+  ] });
+  gx.$('[data-a="writeEng"]').click();
+  t('写入分组生效', gcfg().groups.length === 1 && gcfg().groups[0].name === '只要一组',
+    gcfg().groups.map(x => x.name).join(','));
+  t('只写分组不动引擎', gcfg().engines.length === 2 && gcfg().engines[0].name === '甲',
+    gcfg().engines.map(x => x.name).join(','));
+  t('写入后气泡重绘', gx.$$('#groups .bub').length === 1);
+
+  // 改名状态下的键盘不能误触全局快捷键 / Esc 关面板
+  gx.$('[data-a="set"]').click();
 
   console.log('PASS ' + ok.length);
   ok.forEach(n => console.log('  ✓ ' + n));
