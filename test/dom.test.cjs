@@ -179,7 +179,7 @@ function boot(url, html = '<body></body>', before) {
   let dumped = {};
   try { dumped = JSON.parse(a.$('#io').value); } catch (e) {}
   t('导出整份含全部字段',
-    ['engines', 'presets', 'w', 'pos', 'hotkey', 'openNew'].every(k => k in dumped),
+    ['engines', 'presets', 'groups', 'cats', 'w', 'pos', 'hotkey', 'openNew'].every(k => k in dumped),
     Object.keys(dumped).join(','));
   t('导出整份引擎数正确', (dumped.engines || []).length === 2, (dumped.engines || []).length);
 
@@ -345,6 +345,18 @@ function boot(url, html = '<body></body>', before) {
   cy.$('[data-a="cats"]').click();
   t('再点 ☰ 收起', !cy.$('#cats').classList.contains('on'));
   t('收起状态也落盘', ccfg().cats === false);
+
+  /* ---------- 导入坏快捷键要兜回默认，不能静默失效 ---------- */
+  const hkz = boot('https://example.com/search?q=x');
+  hkz.$('[data-a="set"]').click();
+  hkz.$('#io').value = JSON.stringify({
+    hotkey: 's',                       // 没有修饰键 = 永远匹配不上
+    engines: [{ name: 'A', url: 'https://a.com/?q=%s' }],
+  });
+  hkz.$('[data-a="writeCfg"]').click();
+  const hcfg = JSON.parse(hkz.win.localStorage.getItem('metasearch:cfg'));
+  t('无修饰键的快捷键兜回默认', hcfg.hotkey === 'alt+s', hcfg.hotkey);
+  t('兜回后输入框也同步', hkz.$('#hk').value === 'Alt+S', hkz.$('#hk').value);
 
   console.log('PASS ' + ok.length);
   ok.forEach(n => console.log('  ✓ ' + n));

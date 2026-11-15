@@ -2,7 +2,7 @@
 // @name         聚合搜索 MetaSearch
 // @name:en      MetaSearch - Quick Engine Switcher
 // @namespace    https://github.com/wioaa/metasearch
-// @version      2.3.1
+// @version      2.3.2
 // @description  自动读取当前页面的搜索词（搜索框内容 / URL 参数），一键换成别的搜索引擎；竖栏可拖拽、靠边吸附，引擎按用途分组（通用/技术/社区/影音/学术/购物/图片）一点即换，竖栏 ☰ 可就地切组，可自建气泡分组并整套导入导出
 // @description:en Grab the query already typed on the page and re-run it on another engine. A draggable side rail that snaps to edges.
 // @author       wioaa
@@ -122,7 +122,8 @@
     const cfg = Object.assign(JSON.parse(JSON.stringify(DEFAULTS)), got || {});
     cfg.engines = cleanEngines(cfg.engines);
     if (!cfg.engines.length) cfg.engines = JSON.parse(JSON.stringify(DEFAULTS.engines));
-    if (!cfg.hotkey) cfg.hotkey = DEFAULTS.hotkey;
+    // 快捷键必须是「修饰键 + 一个普通键」，否则录进去的键永远匹配不上（导入坏配置时的静默失效）
+    if (!cfg.hotkey || !parseHotkey(cfg.hotkey).key) cfg.hotkey = DEFAULTS.hotkey;
     cfg.openNew = !!cfg.openNew;
     cfg.cats = !!cfg.cats;
     cfg.w = clampW(cfg.w);
@@ -183,7 +184,7 @@
 .rail:hover .grip::after,.rail.drag .grip::after{opacity:1}
 .q{font-size:11.5px;line-height:1.5;color:#8b929c;padding:1px 27px 7px 4px;margin-bottom:7px;border-bottom:1px solid #262b34;max-height:2.9em;overflow:hidden;word-break:break-word}
 .q b{color:#fff;font-weight:600}
-.list{display:flex;flex-direction:column;gap:2px;overflow-y:auto;margin:0 -2px;padding:0 2px}
+.list{display:flex;flex-direction:column;gap:2px;overflow-y:auto;margin:0 -2px;padding:0 2px;flex:1 1 auto;min-height:0}
 .list::-webkit-scrollbar{width:5px}
 .list::-webkit-scrollbar-thumb{background:#39404c;border-radius:3px}
 .eng{display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:7px;color:#dfe3e9;text-decoration:none;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;font-weight:400;border:1px solid transparent}
@@ -195,7 +196,7 @@
 .catbtn{position:absolute;top:3px;right:3px;z-index:3;width:22px;height:22px;padding:0;border:0;border-radius:6px;background:transparent;color:#9aa1ab;font-size:13px;line-height:1;cursor:pointer;font-family:inherit;opacity:.9}
 .catbtn:hover{background:#2a313c;color:#fff;opacity:1}
 .catbtn.on{color:#7fb0ff;opacity:1;background:rgba(47,107,255,.14)}
-.cats{display:none;flex-wrap:wrap;gap:4px;margin-top:7px;padding-top:7px;border-top:1px solid #262b34;max-height:28vh;overflow-y:auto}
+.cats{display:none;flex:none;flex-wrap:wrap;gap:4px;margin-top:7px;padding-top:7px;border-top:1px solid #262b34;max-height:28vh;overflow-y:auto}
 .cats.on{display:flex}
 .cats::-webkit-scrollbar{width:5px}
 .cats::-webkit-scrollbar-thumb{background:#39404c;border-radius:3px}
@@ -238,7 +239,7 @@
 @keyframes bubPop{0%{transform:translateY(0) scale(1)}34%{transform:translateY(-8px) scale(1.14)}66%{transform:translateY(-1px) scale(.97)}100%{transform:translateY(-2px) scale(1)}}
 .eng.pop{animation:engPop .36s cubic-bezier(.2,.9,.3,1.5) both}
 @keyframes engPop{0%{opacity:0;transform:translateY(9px) scale(.93)}100%{opacity:1;transform:none}}
-@media (prefers-reduced-motion:reduce){.bub,.bub.pop,.eng.pop{animation:none;transition:none}}
+@media (prefers-reduced-motion:reduce){.bub,.bub.pop,.cat,.cat.pop,.eng.pop{animation:none;transition:none}}
 .panel textarea{width:100%;resize:vertical;background:#0f1115;border:1px solid #2a2e36;border-radius:8px;color:#e6e8eb;padding:8px 10px;font:12px/1.7 ui-monospace,SFMono-Regular,monospace;outline:0}
 .panel textarea:focus{border-color:#4c8dff}
 #ta{height:142px}
@@ -771,6 +772,7 @@
     const done = () => {
       if (!isEditing(b)) return;
       b.setAttribute('contenteditable', 'false');
+      if (!cfg.groups[i]) return;   // 改名期间那组被删了，别再往空气上写
       const v = b.textContent.replace(/\s+/g, ' ').trim().slice(0, 12);
       cfg.groups[i].name = v || old;
       b.textContent = cfg.groups[i].name;
@@ -856,12 +858,12 @@
 
   function exportCfg() {
     const json = JSON.stringify({
-      kind: 'config', v: 2, hotkey: cfg.hotkey, openNew: cfg.openNew, w: cfg.w,
+      kind: 'config', v: 3, hotkey: cfg.hotkey, openNew: cfg.openNew, cats: cfg.cats, w: cfg.w,
       pos: cfg.pos, presets: cfg.presets, groups: cfg.groups, engines: cfg.engines,
     }, null, 2);
     $('#io').value = json;
     downloadJson('metasearch-config.json', json);
-    toast(`已导出整份：${cfg.engines.length} 引擎 / ${cfg.presets.length} 布局 / ${cfg.groups.length} 引擎预设`);
+    toast(`已导出整份：${cfg.engines.length} 引擎 / ${cfg.presets.length} 布局 / ${cfg.groups.length} 引擎分组`);
   }
 
   function exportLayout() {
